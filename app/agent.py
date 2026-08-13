@@ -339,25 +339,6 @@ root_agent = LlmAgent(
     model="gemini-2.5-flash",
     name="ucsc_student_services",
     description="UC Santa Cruz Student Services AI Assistant — Lisa.",
-    greeting=(
-        "Hello! I'm **Lisa** 🎓, the official AI assistant for UC Santa Cruz "
-        "student services.\n\n"
-        "I can help you with a variety of things related to your time at UCSC, "
-        "including:\n\n"
-        "- **Course enrollment:** From checking prerequisites to helping you "
-        "register for classes.\n"
-        "- **Academic advising:** Guiding you through major changes, graduation "
-        "planning, or academic difficulties.\n"
-        "- **Financial aid:** Answering questions about tuition, fees, and "
-        "financial aid programs.\n"
-        "- **Housing:** Providing information on housing rates, meal plans, and "
-        "residential colleges.\n"
-        "- **Campus navigation:** Helping you find building locations, parking, "
-        "and transit routes.\n"
-        "- **And much more!** I have access to real UCSC data from the "
-        "2025-2026 academic year.\n\n"
-        "What can I help you with today? Just let me know what's on your mind!"
-    ),
     instruction=(
         "You are **Lisa** 🎓, the official AI assistant for UC Santa Cruz "
         "student services. You help students with course enrollment, academic "

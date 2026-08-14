@@ -82,7 +82,7 @@ student_tool = FunctionTool(func=lookup_student_record)
 # =============================================================================
 
 prereq_check_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="prereq_check_agent",
     description="Validates prerequisites for requested courses.",
     instruction=(
@@ -102,7 +102,7 @@ prereq_check_agent = LlmAgent(
 )
 
 schedule_builder_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="schedule_builder_agent",
     description="Builds a conflict-free course schedule.",
     instruction=(
@@ -124,7 +124,7 @@ schedule_builder_agent = LlmAgent(
 )
 
 enrollment_confirm_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="enrollment_confirm_agent",
     description="Confirms enrollment eligibility and simulates enrollment.",
     instruction=(
@@ -160,7 +160,7 @@ enrollment_pipeline = SequentialAgent(
 # =============================================================================
 
 course_catalog_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="course_catalog_agent",
     description="Provides course catalog info for the requested quarter.",
     instruction=(
@@ -178,7 +178,7 @@ course_catalog_agent = LlmAgent(
 )
 
 financial_aid_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="financial_aid_agent",
     description="Provides financial aid and tuition info.",
     instruction=(
@@ -197,7 +197,7 @@ financial_aid_agent = LlmAgent(
 )
 
 housing_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="housing_agent",
     description="Provides housing and dining info.",
     instruction=(
@@ -215,7 +215,7 @@ housing_agent = LlmAgent(
 )
 
 events_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="events_agent",
     description="Provides upcoming events and important dates.",
     instruction=(
@@ -252,7 +252,7 @@ semester_dashboard = ParallelAgent(
 # naturally handles multi-turn conversation across user messages.
 
 academic_advisor = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3-flash-preview",
     name="academic_advisor",
     description=(
         "Academic advising for complex questions: major changes, graduation "
@@ -288,7 +288,7 @@ academic_advisor = LlmAgent(
 # can coexist on the same agent. No need for a separate web_search_agent.
 
 root_agent = LlmAgent(
-    model="gemini-3.0-flash",
+    model="gemini-3-flash-preview",
     name="ucsc_student_services",
     description="UC Santa Cruz Student Services AI Assistant — Lisa.",
     instruction=(

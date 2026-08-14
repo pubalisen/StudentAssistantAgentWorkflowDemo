@@ -4,9 +4,9 @@ Demonstrates production-grade ADK 2.0 patterns for a UC Santa Cruz student porta
 
   1. SequentialAgent  — Enrollment Pipeline: Prereq Check → Schedule Build → Confirm
   2. ParallelAgent    — Semester Dashboard: Courses + Financial Aid + Housing + Events
-  3. LoopAgent        — Advisor Session: Multi-turn academic advising until resolved
-  4. Skills           — Inline, file-based, and RAG-grounded skills
-  5. Google Search    — Live web grounding for fresh/unknown queries
+  3. LlmAgent         — Academic Advisor: data-backed advising with knowledge tools
+  4. LlmAgent         — Web Search: Google Search grounding (isolated from FunctionTools)
+  5. FunctionTool     — RAG Knowledge Base: 8 UCSC corpus documents
 """
 
 import pathlib
@@ -15,7 +15,6 @@ from typing import Optional
 from google.adk.agents import LlmAgent
 from google.adk.agents.sequential_agent import SequentialAgent
 from google.adk.agents.parallel_agent import ParallelAgent
-from google.adk.agents.loop_agent import LoopAgent
 from google.adk.tools import google_search, FunctionTool
 
 
@@ -243,63 +242,39 @@ semester_dashboard = ParallelAgent(
 
 
 # =============================================================================
-# 3. LOOP AGENT — Academic Advisor Session
+# 3. ACADEMIC ADVISOR — Single-turn advising agent (multi-turn via root)
 # =============================================================================
+# Note: LoopAgent runs all iterations in one turn without user input, causing
+# repetitive responses. Instead, we use a single LlmAgent — the root orchestrator
+# naturally handles multi-turn conversation across user messages.
 
-student_query_agent = LlmAgent(
+academic_advisor = LlmAgent(
     model="gemini-2.5-flash",
-    name="student_query_agent",
-    description="Captures and clarifies the student's academic question.",
-    instruction=(
-        "You are a student intake agent for UCSC academic advising.\n\n"
-        "If this is the FIRST iteration (no 'advisor_response' in state):\n"
-        "  - Acknowledge the student's question\n"
-        "  - Identify the core issue\n"
-        "  - List any clarifying questions\n\n"
-        "If 'advisor_response' exists in state:\n"
-        "  - Review the advisor's response\n"
-        "  - Note if the issue seems resolved\n"
-        "  - Add context the student might want to provide\n\n"
-        "Store in state key 'student_question'."
+    name="academic_advisor",
+    description=(
+        "Academic advising for complex questions: major changes, graduation "
+        "planning, academic difficulty, course load planning. Use when the "
+        "student needs personalized academic guidance."
     ),
-    output_key="student_question",
-)
-
-advisor_agent = LlmAgent(
-    model="gemini-2.5-flash",
-    name="advisor_agent",
-    description="Provides detailed academic advising using UCSC data.",
     instruction=(
         "You are a senior academic advisor at UC Santa Cruz Baskin School of "
-        "Engineering. Read state key 'student_question' for the student's issue.\n\n"
-        "Use the lookup_ucsc_knowledge tool to retrieve relevant data. "
-        "Common lookups:\n"
+        "Engineering.\n\n"
+        "Use the lookup_ucsc_knowledge tool to retrieve relevant data before "
+        "answering. Common lookups:\n"
         "- Major switching → 'cs_requirements' + 'bio_requirements'\n"
         "- Graduation planning → 'cs_requirements' or 'bio_requirements'\n"
         "- Tuition questions → 'tuition'\n"
         "- Scheduling → 'calendar'\n"
         "- General policies → 'faq'\n\n"
-        "Provide thorough, data-backed advice. Be empathetic but realistic.\n\n"
-        "If the issue is FULLY RESOLVED:\n"
-        "  - Write 'RESOLVED' on the first line\n"
-        "  - Summarize key action items\n"
-        "  - Recommend an in-person appointment for formal changes\n\n"
-        "If more information is needed, ask specific follow-up questions.\n\n"
-        "Store in state key 'advisor_response'."
+        "Guidelines:\n"
+        "1. Always look up data FIRST, then advise based on facts\n"
+        "2. Be empathetic but realistic\n"
+        "3. Provide a clear, actionable answer in ONE response\n"
+        "4. If you need more info from the student, ask specific questions\n"
+        "5. Recommend an in-person appointment for formal changes\n"
+        "6. Summarize key action items at the end"
     ),
     tools=[knowledge_tool],
-    output_key="advisor_response",
-)
-
-advisor_session = LoopAgent(
-    name="advisor_session",
-    description=(
-        "Multi-turn academic advising session. Student asks → Advisor responds "
-        "→ loops until 'RESOLVED' or 5 iterations. Use for complex advising "
-        "like major changes, graduation planning, or academic difficulty."
-    ),
-    sub_agents=[student_query_agent, advisor_agent],
-    max_iterations=5,
 )
 
 
@@ -346,44 +321,43 @@ root_agent = LlmAgent(
         "You have access to real UCSC data from the 2025-2026 academic year "
         "through the lookup_ucsc_knowledge tool, and live web information "
         "through the web_search_agent.\n\n"
-        "## How to Route Queries\n\n"
+        "## IMPORTANT: Routing Rules\n\n"
+        "### DEFAULT → lookup_ucsc_knowledge (Direct Tool) — USE THIS FIRST\n"
+        "For ANY factual question, ALWAYS try the knowledge tool first:\n"
+        "- Prerequisites → topic='cs_requirements' or 'bio_requirements'\n"
+        "- Tuition/fees → topic='tuition'\n"
+        "- Professors → topic='professors'\n"
+        "- Calendar/dates → topic='calendar'\n"
+        "- Housing → topic='housing'\n"
+        "- Campus locations → topic='campus_map'\n"
+        "- General Q&A → topic='faq'\n\n"
         "### → enrollment_pipeline (Sequential)\n"
-        "When students want to enroll in specific courses:\n"
+        "ONLY when students want to fully enroll in specific courses:\n"
         "- 'I want to enroll in CSE 101 and CSE 120 for Fall'\n"
         "- 'Help me register for classes'\n\n"
         "### → semester_dashboard (Parallel)\n"
-        "When students want a comprehensive quarter overview:\n"
-        "- 'Give me everything I need for Winter 2026'\n"
-        "- 'What should I know about next quarter?'\n\n"
-        "### → advisor_session (Loop)\n"
-        "For complex advising requiring back-and-forth:\n"
+        "ONLY when students want a comprehensive quarter overview:\n"
+        "- 'Give me everything I need for Winter 2026'\n\n"
+        "### → academic_advisor\n"
+        "ONLY for complex, personalized advising that needs multiple data sources:\n"
         "- 'Should I switch from Biology to CS?'\n"
         "- 'Help me plan my remaining quarters'\n"
         "- 'I'm on academic probation'\n\n"
         "### → web_search_agent\n"
-        "For breaking news, events, or cross-UC comparisons.\n\n"
-        "### → lookup_ucsc_knowledge (Direct Tool)\n"
-        "For specific factual queries — call with the right topic:\n"
-        "- Prereqs → topic='cs_requirements'\n"
-        "- Tuition → topic='tuition'\n"
-        "- Professors → topic='professors'\n"
-        "- Calendar → topic='calendar'\n"
-        "- Housing → topic='housing'\n"
-        "- Campus locations → topic='campus_map'\n"
-        "- General Q&A → topic='faq'\n"
-        "- Bio/Chem requirements → topic='bio_requirements'\n\n"
+        "ONLY when the knowledge base doesn't have the answer:\n"
+        "- Breaking news, events, cross-UC comparisons\n\n"
         "## Style\n"
         "- Friendly, supportive, and encouraging\n"
         "- Always provide actionable next steps\n"
         "- Cite data sources when using UCSC knowledge\n"
-        "- If unsure, direct students to the appropriate campus office\n"
-        "- Always mention which workflow you're activating"
+        "- Give ONE clear response per question — do NOT repeat yourself\n"
+        "- If unsure, direct students to the appropriate campus office"
     ),
     tools=[knowledge_tool],
     sub_agents=[
         enrollment_pipeline,
         semester_dashboard,
-        advisor_session,
+        academic_advisor,
         web_search_agent,
     ],
 )

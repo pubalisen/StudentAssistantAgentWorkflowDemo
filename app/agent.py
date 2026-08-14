@@ -282,39 +282,13 @@ academic_advisor = LlmAgent(
 
 
 # =============================================================================
-# 4. WEB SEARCH AGENT — Google Search grounding (isolated)
+# 4. ROOT ORCHESTRATOR — Lisa
 # =============================================================================
-# Vertex AI requires search tools to be isolated from function tools.
-# This agent handles all live web queries.
-
-web_search_agent = LlmAgent(
-    model="gemini-2.5-flash",
-    name="web_search_agent",
-    description=(
-        "Searches the live web for current UCSC information not in the local "
-        "knowledge base. Use for breaking news, campus events, cross-UC "
-        "comparisons, recent policy changes, or anything requiring "
-        "up-to-the-minute information."
-    ),
-    instruction=(
-        "You are a UCSC web research agent. Use Google Search to find current "
-        "information about UC Santa Cruz.\n\n"
-        "Focus searches on ucsc.edu when possible.\n"
-        "Summarize findings clearly with source URLs.\n"
-        "If the query is about something in the UCSC knowledge base "
-        "(prerequisites, tuition, calendar, etc.), say so and suggest "
-        "the user ask directly instead."
-    ),
-    tools=[google_search],
-)
-
-
-# =============================================================================
-# 5. ROOT ORCHESTRATOR — Lisa
-# =============================================================================
+# Gemini 3.0 Flash supports tool combination: Google Search + FunctionTools
+# can coexist on the same agent. No need for a separate web_search_agent.
 
 root_agent = LlmAgent(
-    model="gemini-2.5-flash",
+    model="gemini-3.0-flash",
     name="ucsc_student_services",
     description="UC Santa Cruz Student Services AI Assistant — Lisa.",
     instruction=(
@@ -324,13 +298,8 @@ root_agent = LlmAgent(
         "You have access to:\n"
         "- **lookup_ucsc_knowledge** — UCSC catalog, tuition, calendar, etc.\n"
         "- **lookup_student_record** — Individual student academic records\n"
-        "- **Sub-agents** for enrollment, dashboards, advising, web search\n\n"
-        "## ⚠️ CRITICAL RULE\n"
-        "You MUST choose ONLY ONE action per response:\n"
-        "  - Call a tool (lookup_ucsc_knowledge or lookup_student_record), OR\n"
-        "  - Transfer to a sub-agent\n"
-        "NEVER call a tool AND transfer to a sub-agent in the same turn. "
-        "This will cause an error.\n\n"
+        "- **Google Search** — Live web grounding for current information\n"
+        "- **Sub-agents** for enrollment, dashboards, and advising\n\n"
         "## Routing Rules\n\n"
         "### → lookup_student_record (Student Data)\n"
         "When a student identifies themselves or asks about their records:\n"
@@ -351,18 +320,17 @@ root_agent = LlmAgent(
         "- Housing → topic='housing'\n"
         "- Campus locations → topic='campus_map'\n"
         "- General Q&A → topic='faq'\n\n"
+        "### → Google Search (Live Web)\n"
+        "For anything NOT in the knowledge base:\n"
+        "- Breaking news, current events, rankings\n"
+        "- Cross-UC comparisons, external scholarships\n"
+        "- Real-time campus events and announcements\n\n"
         "### → enrollment_pipeline (Sequential)\n"
         "ONLY when students want to fully enroll in specific courses.\n\n"
         "### → semester_dashboard (Parallel)\n"
         "ONLY when students want a comprehensive quarter overview.\n\n"
         "### → academic_advisor\n"
         "ONLY for complex, personalized advising needing multiple data sources.\n\n"
-        "### → web_search_agent (Google Search Grounding)\n"
-        "ONLY for questions the knowledge base CANNOT answer:\n"
-        "- Breaking news, current events, rankings\n"
-        "- Cross-UC comparisons, external scholarships\n"
-        "- Anything not in the UCSC corpus\n"
-        "IMPORTANT: Do NOT call any tool before transferring to web_search_agent.\n\n"
         "## Style\n"
         "- Friendly, supportive, and encouraging\n"
         "- Always provide actionable next steps\n"
@@ -371,12 +339,10 @@ root_agent = LlmAgent(
         "- When showing student data, format it cleanly with tables or lists\n"
         "- If unsure, direct students to the appropriate campus office"
     ),
-    tools=[knowledge_tool, student_tool],
+    tools=[knowledge_tool, student_tool, google_search],
     sub_agents=[
         enrollment_pipeline,
         semester_dashboard,
         academic_advisor,
-        web_search_agent,
     ],
 )
-
